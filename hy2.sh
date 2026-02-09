@@ -1,13 +1,15 @@
+cat << 'EOF' > hysteria2.sh
 #!/usr/bin/env bash
 # -*- coding: utf-8 -*-
 # Hysteria2 极简部署脚本（支持命令行端口参数 + 默认跳过证书验证）
 # 适用于超低内存环境（32-64MB）
+# 兼容：curl | bash（不使用 local）
 
 set -e
 
 # ---------- 默认配置 ----------
 HYSTERIA_VERSION="v2.7.0"
-DEFAULT_PORT=22222         # 自适应端口
+DEFAULT_PORT=22222            # 默认端口（可被命令行参数覆盖）
 AUTH_PASSWORD="ieshare2025"   # 建议修改为复杂密码
 CERT_FILE="cert.pem"
 KEY_FILE="key.pem"
@@ -31,7 +33,6 @@ fi
 
 # ---------- 检测架构 ----------
 arch_name() {
-    local machine
     machine=$(uname -m | tr '[:upper:]' '[:lower:]')
     if [[ "$machine" == *"arm64"* ]] || [[ "$machine" == *"aarch64"* ]]; then
         echo "arm64"
@@ -78,7 +79,7 @@ ensure_cert() {
 
 # ---------- 写配置文件 ----------
 write_config() {
-cat > server.yaml <<EOF
+cat > server.yaml <<EOF2
 listen: ":${SERVER_PORT}"
 tls:
   cert: "$(pwd)/${CERT_FILE}"
@@ -98,7 +99,7 @@ quic:
   max_stream_receive_window: 131072
   initial_conn_receive_window: 131072
   max_conn_receive_window: 262144
-EOF
+EOF2
     echo "✅ 写入配置 server.yaml（端口=${SERVER_PORT}, SNI=${SNI}, ALPN=${ALPN}）。"
 }
 
@@ -110,7 +111,8 @@ get_server_ip() {
 
 # ---------- 打印连接信息 ----------
 print_connection_info() {
-    local IP="$1"
+    IP="$1"
+
     echo "🎉 Hysteria2 部署成功！（极简优化版）"
     echo "=========================================================================="
     echo "📋 服务器信息:"
@@ -118,11 +120,15 @@ print_connection_info() {
     echo "   🔌 端口: $SERVER_PORT"
     echo "   🔑 密码: $AUTH_PASSWORD"
     echo ""
+
     echo "📱 节点链接（SNI=${SNI}, ALPN=${ALPN}, 跳过证书验证）:"
-    # Clash 单行内联（复制到 Clash 配置的 proxies: 下即可）
-    CLASH_NAME="hy2-${SERVER_PORT}"
-    CLASH_PASS_ESC=$(printf '%s' "$AUTH_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')
+    echo "hysteria2://${AUTH_PASSWORD}@${IP}:${SERVER_PORT}?sni=${SNI}&alpn=${ALPN}&insecure=1#hy2-${SERVER_PORT}"
+
+    echo ""
     echo "📌 Clash 单行内联:"
+    CLASH_NAME="hy2-${SERVER_PORT}"
+    # YAML 安全：转义 \ 和 "
+    CLASH_PASS_ESC=$(printf '%s' "$AUTH_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')
     echo "- { name: \"${CLASH_NAME}\", type: hysteria2, server: \"${IP}\", port: ${SERVER_PORT}, password: \"${CLASH_PASS_ESC}\", sni: \"${SNI}\", alpn: [\"${ALPN}\"], skip-cert-verify: true }"
 
     echo ""
@@ -152,9 +158,6 @@ main() {
 }
 
 main "$@"
-
-
-
-
-
-
+EOF
+chmod +x hysteria2.sh
+bash hysteria2.sh
