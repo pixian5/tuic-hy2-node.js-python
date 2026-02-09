@@ -6,7 +6,7 @@
 set -e
 
 # ---------- 默认配置 ----------
-HYSTERIA_VERSION="v2.6.5"
+HYSTERIA_VERSION="v2.7.0"
 DEFAULT_PORT=22222         # 自适应端口
 AUTH_PASSWORD="ieshare2025"   # 建议修改为复杂密码
 CERT_FILE="cert.pem"
@@ -108,10 +108,6 @@ get_server_ip() {
     echo "$IP"
 }
 
-    # Clash 单行内联（复制到 Clash 配置的 proxies: 下即可）
-local CLASH_NAME="hy2-${SERVER_PORT}"
-local CLASH_PASS_ESC
-CLASH_PASS_ESC=$(printf '%s' "$AUTH_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')
 # ---------- 打印连接信息 ----------
 print_connection_info() {
     local IP="$1"
@@ -123,7 +119,9 @@ print_connection_info() {
     echo "   🔑 密码: $AUTH_PASSWORD"
     echo ""
     echo "📱 节点链接（SNI=${SNI}, ALPN=${ALPN}, 跳过证书验证）:"
-    echo "hysteria2://${AUTH_PASSWORD}@${IP}:${SERVER_PORT}?sni=${SNI}&alpn=${ALPN}&insecure=1#Hy2-Bing"
+    # Clash 单行内联（复制到 Clash 配置的 proxies: 下即可）
+    CLASH_NAME="hy2-${SERVER_PORT}"
+    CLASH_PASS_ESC=$(printf '%s' "$AUTH_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')
     echo "📌 Clash 单行内联:"
     echo "- { name: \"${CLASH_NAME}\", type: hysteria2, server: \"${IP}\", port: ${SERVER_PORT}, password: \"${CLASH_PASS_ESC}\", sni: \"${SNI}\", alpn: [\"${ALPN}\"], skip-cert-verify: true }"
 
@@ -154,6 +152,7 @@ main() {
 }
 
 main "$@"
+
 
 
 
